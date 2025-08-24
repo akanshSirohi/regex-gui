@@ -16,10 +16,11 @@ import { CSS } from "@dnd-kit/utilities";
 import { Section, Badge, IconBtn, Modal } from "./components/ui.jsx";
 import Palette from "./components/Palette.jsx";
 import { NodeEditor } from "./components/editors/NodeEditors.jsx";
-import { sampleEmail } from "./templates/samples.js";
+import { templates } from "./templates/index.js";
+import TemplateDropdown from "./components/TemplateDropdown.jsx";
 import { nodeToPattern, summarizeNode, computeMatches, highlightText } from "./utils/regex.jsx";
 import { makeAnchor, makeLiteral } from "./utils/nodes.js";
-import { FaEdit, FaTrash, FaMagic, FaRedo, FaGripVertical } from "react-icons/fa";
+import { FaEdit, FaTrash, FaRedo, FaGripVertical } from "react-icons/fa";
 
 export default function RegexBuilderApp() {
   const [nodes, setNodes] = useState([makeAnchor("start"), makeLiteral(), makeAnchor("end")]);
@@ -28,10 +29,10 @@ export default function RegexBuilderApp() {
   const [showExplain, setShowExplain] = useState(true);
   const [modalNode, setModalNode] = useState(null);
 
-  const applyEmailTemplate = () => {
-    const t = sampleEmail();
-    setNodes(t);
-    setFlags({ g: true, i: true, m: false, s: false, u: true, y: false });
+  const applyTemplate = ({ nodes, flags, testText }) => {
+    setNodes(nodes);
+    setFlags(flags);
+    if (testText) setTestText(testText);
   };
 
   const addNode = (n) => setNodes((prev) => [...prev, n]);
@@ -100,9 +101,7 @@ export default function RegexBuilderApp() {
         <header className="mb-6 flex items-center justify-between gap-3 flex-wrap">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Regex Builder</h1>
           <div className="flex items-center gap-2 flex-wrap">
-            <button className="pill" onClick={applyEmailTemplate}>
-              <FaMagic /> Email template
-            </button>
+            <TemplateDropdown templates={templates} onSelect={applyTemplate} />
             <button
               className="pill"
               onClick={() => {
