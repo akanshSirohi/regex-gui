@@ -176,6 +176,76 @@ const buildHexColor = () => {
   return { nodes, flags, testText };
 };
 
+// File extension (e.g., .js, .txt)
+const buildFileExtension = () => {
+  const nodes = [];
+  const group = makeGroup();
+  group.nodes.push(literal("."));
+  const word = charClass(
+    { sets: { az: true, AZ: true, d09: true, underscore: true } },
+    { kind: "oneOrMore", greedy: true }
+  );
+  group.nodes.push(word);
+  group.nodes.push(makeAnchor("end"));
+  nodes.push(group);
+  const flags = { g: true, i: true, m: true, s: false, u: false, y: false };
+  const testText = "file.js\nindex.html";
+  return { nodes, flags, testText };
+};
+
+// UUID v4
+const buildUUID = () => {
+  const nodes = [];
+  nodes.push(makeAnchor("start"));
+  const hex = charClass(
+    { sets: { d09: true }, custom: "abcdefABCDEF" },
+    { kind: "exact", n: 8, greedy: true }
+  );
+  nodes.push(hex);
+  nodes.push(literal("-"));
+  const group = makeGroup();
+  const mid = charClass(
+    { sets: { d09: true }, custom: "abcdefABCDEF" },
+    { kind: "exact", n: 4, greedy: true }
+  );
+  group.nodes.push(mid);
+  group.nodes.push(literal("-"));
+  group.quant = { kind: "exact", n: 3, greedy: true };
+  nodes.push(group);
+  const tail = charClass(
+    { sets: { d09: true }, custom: "abcdefABCDEF" },
+    { kind: "exact", n: 12, greedy: true }
+  );
+  nodes.push(tail);
+  nodes.push(makeAnchor("end"));
+  const flags = { g: false, i: false, m: false, s: false, u: false, y: false };
+  const testText = "123e4567-e89b-12d3-a456-426614174000";
+  return { nodes, flags, testText };
+};
+
+// IPv6 address
+const buildIPv6 = () => {
+  const nodes = [];
+  nodes.push(makeAnchor("start"));
+  const seg = makeGroup();
+  const part = charClass(
+    { sets: { d09: true }, custom: "abcdefABCDEF" },
+    { kind: "range", min: 1, max: 4, greedy: true }
+  );
+  seg.nodes.push(part);
+  seg.nodes.push(literal(":"));
+  seg.quant = { kind: "exact", n: 7, greedy: true };
+  nodes.push(seg);
+  nodes.push(charClass(
+    { sets: { d09: true }, custom: "abcdefABCDEF" },
+    { kind: "range", min: 1, max: 4, greedy: true }
+  ));
+  nodes.push(makeAnchor("end"));
+  const flags = { g: false, i: false, m: false, s: false, u: false, y: false };
+  const testText = "2001:0db8:85a3:0000:0000:8a2e:0370:7334";
+  return { nodes, flags, testText };
+};
+
 // Username 3-16 word chars/underscore
 const buildUsername = () => {
   const nodes = [];
@@ -228,6 +298,9 @@ export const templates = [
   { id: "time", title: "Time", description: "HH:MM", build: buildTime },
   { id: "cc", title: "Credit card", description: "16 digit card", build: buildCreditCard },
   { id: "hex", title: "Hex color", description: "#rgb or #rrggbb", build: buildHexColor },
+  { id: "fileext", title: "File extension", description: "Capture .ext", build: buildFileExtension },
+  { id: "uuid", title: "UUID", description: "UUID v4", build: buildUUID },
+  { id: "ipv6", title: "IPv6", description: "IPv6 address", build: buildIPv6 },
   { id: "user", title: "Username", description: "3-16 word chars", build: buildUsername },
   { id: "pass", title: "Password", description: "At least 8 chars with mix", build: buildPassword },
 ];
