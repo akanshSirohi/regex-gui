@@ -54,4 +54,17 @@ describe("parseRegex", () => {
       { type: "literal", text: "b", quant: { kind: "one" } },
     ]);
   });
+
+  it("parses character classes without adding digits", () => {
+    const { nodes } = parseRegex("([A-Z])\\w+", "");
+    const group = nodes[0];
+    const cc = group.nodes[0];
+    expect(cc.payload.sets).toEqual({
+      az: false,
+      AZ: true,
+      d09: false,
+      underscore: false,
+      whitespace: false,
+    });
+  });
 });
