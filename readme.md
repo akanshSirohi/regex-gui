@@ -37,6 +37,7 @@ Drag-and-drop regular expression builder built with React + Vite.
   - Username
   - Password
 - Copy regex to clipboard
+- Import existing regex patterns
 
 ## Tech Stack
 - React 18
@@ -61,7 +62,8 @@ npm run preview # locally preview production build
 2. Edit blocks to fine-tune patterns.
 3. Toggle regex flags.
 4. Apply templates for common patterns.
-5. Copy the resulting regex to your clipboard.
+5. Use the Import button to load an existing pattern.
+6. Copy the resulting regex to your clipboard.
 
 ## Contributing
 Issues and pull requests welcome. Feel free to contribute!

@@ -21,6 +21,7 @@ import TemplateDropdown from "./components/TemplateDropdown.jsx";
 import { nodeToPattern, summarizeNode, computeMatches, highlightText } from "./utils/regex.jsx";
 import { makeAnchor, makeLiteral } from "./utils/nodes.js";
 import { FaEdit, FaTrash, FaRedo, FaGripVertical } from "react-icons/fa";
+import ImportRegexModal from "./components/ImportRegexModal.jsx";
 
 export default function RegexBuilderApp() {
   const [nodes, setNodes] = useState([makeAnchor("start"), makeLiteral(), makeAnchor("end")]);
@@ -28,6 +29,7 @@ export default function RegexBuilderApp() {
   const [testText, setTestText] = useState("Try your regex here. For example, test 123, test 456.");
   const [showExplain, setShowExplain] = useState(true);
   const [modalNode, setModalNode] = useState(null);
+  const [showImport, setShowImport] = useState(false);
 
   const applyTemplate = ({ nodes, flags, testText }) => {
     setNodes(nodes);
@@ -102,6 +104,7 @@ export default function RegexBuilderApp() {
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Regex Builder</h1>
           <div className="flex items-center gap-2 flex-wrap">
             <TemplateDropdown templates={templates} onSelect={applyTemplate} />
+            <button className="pill" onClick={() => setShowImport(true)}>Import regex</button>
             <button
               className="pill"
               onClick={() => {
@@ -216,6 +219,15 @@ export default function RegexBuilderApp() {
         <Modal title={`Edit block #${modalNode.idx + 1}`} onClose={() => setModalNode(null)}>
           <NodeEditor node={nodes[modalNode.idx]} onChange={(n) => updateNode(modalNode.idx, n)} />
         </Modal>
+      )}
+      {showImport && (
+        <ImportRegexModal
+          onClose={() => setShowImport(false)}
+          onImport={({ nodes: n, flags: f }) => {
+            setNodes(n);
+            setFlags(f);
+          }}
+        />
       )}
 
       <footer className="max-w-7xl mx-auto px-4 pb-10 pt-4 text-xs text-slate-400">
