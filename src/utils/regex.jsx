@@ -1,6 +1,19 @@
 // Regex utilities and rendering helpers (JSX)
 
-export const escapeLiteral = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, (m) => `\\${m}`);
+import { parse as parseAst, generate } from "regexp-tree";
+import {
+  makeLiteral,
+  makePredef,
+  makeAnchor,
+  makeBoundary,
+  makeCharClass,
+  makeGroup,
+  makeAlt,
+  makeLook,
+  makeBackref,
+} from "./nodes.js";
+
+export const escapeLiteral = (s) => s.replace(/[.*+?^${}()|[\\]\\]/g, (m) => `\\${m}`);
 
 export const escapeCharClass = (s) => s.replace(/[\\\]\-^]/g, (m) => `\\${m}`); // escape \\ ] - ^ inside []
 
@@ -27,6 +40,9 @@ export const quantToString = (q) => {
 export const predefToString = (p) => ({ digit: "\\d", nondigit: "\\D", word: "\\w", nonword: "\\W", space: "\\s", nonspace: "\\S", any: "." }[p]);
 
 export const renderCharClass = (cc) => {
+  if (cc.raw) {
+    return `[${cc.negate ? "^" : ""}${cc.raw}]`;
+  }
   const parts = [];
   if (cc.sets.az) parts.push("a-z");
   if (cc.sets.AZ) parts.push("A-Z");
@@ -64,7 +80,11 @@ export const nodeToPattern = (n) => {
     }
     case "alternation": {
       const branches = n.branches.map((b) => b.map(nodeToPattern).join("")).join("|");
-      return `(?:${branches})${quantToString(n.quant)}`;
+      const quant = quantToString(n.quant);
+      if (n.grouped || quant) {
+        return `(?:${branches})${quant}`;
+      }
+      return branches;
     }
     case "look": {
       const inner = n.nodes.map(nodeToPattern).join("");
@@ -149,5 +169,176 @@ export const highlightText = (text, ranges) => {
   }
   if (idx < text.length) out.push(<span key={`t-${idx}`}>{text.slice(idx)}</span>);
   return out;
+};
+
+// Parse a regex pattern/flags into the app's node representation
+export const parseRegex = (pattern, flags = "") => {
+  const flagObj = { g: false, i: false, m: false, s: false, u: false, y: false };
+  for (const f of flags) if (flagObj.hasOwnProperty(f)) flagObj[f] = true;
+
+  const ast = parseAst(new RegExp(pattern, flags));
+
+  const quantFrom = (q) => {
+    if (!q) return { kind: "one" };
+    const greedy = q.greedy !== false;
+    switch (q.kind) {
+      case "+":
+        return { kind: "oneOrMore", greedy };
+      case "*":
+        return { kind: "zeroOrMore", greedy };
+      case "?":
+        return { kind: "zeroOrOne", greedy };
+      case "Range":
+        if (q.from === q.to) return { kind: "exact", n: q.from, greedy };
+        if (q.to === undefined || q.to === null) return { kind: "atLeast", n: q.from, greedy };
+        return { kind: "range", min: q.from, max: q.to, greedy };
+      default:
+        return { kind: "one" };
+    }
+  };
+
+  const convertCharClass = (n) => {
+    const cc = makeCharClass();
+    let body = generate(n);
+    if (body.startsWith("[")) body = body.slice(1, -1);
+    if (body.startsWith("^")) {
+      cc.payload.negate = true;
+      body = body.slice(1);
+    }
+    const rawBody = body;
+    const remove = (token) => {
+      if (body.includes(token)) {
+        body = body.replace(token, "");
+        return true;
+      }
+      return false;
+    };
+    if (remove("a-z")) cc.payload.sets.az = true;
+    if (remove("A-Z")) cc.payload.sets.AZ = true;
+    if (remove("0-9")) cc.payload.sets.d09 = true;
+    if (remove("_")) cc.payload.sets.underscore = true;
+    if (remove("\\s")) cc.payload.sets.whitespace = true;
+    cc.payload.custom = body;
+    cc.payload.raw = rawBody;
+    return cc;
+  };
+
+  const convert = (node) => {
+    switch (node.type) {
+      case "Alternative":
+        return convertSeq(node.expressions);
+      case "Char": {
+        if (node.kind === "meta") {
+          const map = {
+            "\\d": "digit",
+            "\\D": "nondigit",
+            "\\w": "word",
+            "\\W": "nonword",
+            "\\s": "space",
+            "\\S": "nonspace",
+            ".": "any",
+          };
+          const which = map[node.value];
+          if (which) return [makePredef(which)];
+        }
+        const lit = makeLiteral();
+        lit.text = node.value;
+        return [lit];
+      }
+      case "Repetition": {
+        const [child] = convert(node.expression);
+        child.quant = quantFrom(node.quantifier);
+        return [child];
+      }
+      case "Group": {
+        const g = makeGroup();
+        g.capturing = node.capturing !== false;
+        if (node.name) g.name = node.name;
+        g.nodes = node.expression ? convert(node.expression) : [];
+        return [g];
+      }
+      case "Disjunction": {
+        const branches = [];
+        const collect = (n) => {
+          if (n.type === "Disjunction") {
+            collect(n.left);
+            collect(n.right);
+          } else if (n.type === "Alternative") {
+            branches.push(convertSeq(n.expressions));
+          } else {
+            branches.push(convert(n));
+          }
+        };
+        collect(node);
+        const alt = makeAlt();
+        alt.grouped = false;
+        alt.branches = branches.map((b) => (Array.isArray(b) ? b : b));
+        return [alt];
+      }
+      case "Assertion": {
+        if (node.kind === "^") return [makeAnchor("start")];
+        if (node.kind === "$") return [makeAnchor("end")];
+        if (node.kind === "\\b") return [makeBoundary("word")];
+        if (node.kind === "\\B") return [makeBoundary("nonword")];
+        if (node.kind === "Lookahead" || node.kind === "Lookbehind") {
+          const look = makeLook();
+          look.direction = node.kind === "Lookahead" ? "ahead" : "behind";
+          look.positive = !node.negative;
+          look.nodes = node.assertion ? convert(node.assertion) : [];
+          return [look];
+        }
+        return [];
+      }
+      case "CharacterClass": {
+        return [convertCharClass(node)];
+      }
+      case "Backreference": {
+        const br = makeBackref();
+        br.ref = node.kind === "name" ? { name: node.reference } : { index: node.reference };
+        return [br];
+      }
+      default:
+        return [];
+    }
+  };
+
+  const convertSeq = (exprs) => {
+    const out = [];
+    let buf = "";
+    const flush = () => {
+      if (buf) {
+        const lit = makeLiteral();
+        lit.text = buf;
+        out.push(lit);
+        buf = "";
+      }
+    };
+    for (const e of exprs) {
+      if (e.type === "Char" && e.kind === "simple") {
+        buf += e.value;
+        continue;
+      }
+      if (
+        e.type === "Repetition" &&
+        e.expression.type === "Char" &&
+        e.expression.kind === "simple"
+      ) {
+        flush();
+        const lit = makeLiteral();
+        lit.text = e.expression.value;
+        lit.quant = quantFrom(e.quantifier);
+        out.push(lit);
+        continue;
+      }
+      flush();
+      out.push(...convert(e));
+    }
+    flush();
+    return out;
+  };
+
+  const body = ast.body;
+  const nodes = body.type === "Alternative" ? convertSeq(body.expressions) : convert(body);
+  return { nodes, flags: flagObj };
 };
 
