@@ -1,10 +1,25 @@
 import React, { useMemo, useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  verticalListSortingStrategy,
+  useSortable,
+  arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { Section, Badge, IconBtn, Modal } from "./components/ui.jsx";
 import Palette from "./components/Palette.jsx";
 import { NodeEditor } from "./components/editors/NodeEditors.jsx";
 import { sampleEmail } from "./templates/samples.js";
 import { nodeToPattern, summarizeNode, computeMatches, highlightText } from "./utils/regex.jsx";
 import { makeAnchor, makeLiteral } from "./utils/nodes.js";
+import { FaEdit, FaTrash, FaMagic, FaRedo, FaGripVertical } from "react-icons/fa";
 
 export default function RegexBuilderApp() {
   const [nodes, setNodes] = useState([makeAnchor("start"), makeLiteral(), makeAnchor("end")]);
@@ -21,17 +36,47 @@ export default function RegexBuilderApp() {
 
   const addNode = (n) => setNodes((prev) => [...prev, n]);
   const removeNode = (idx) => setNodes((prev) => prev.filter((_, i) => i !== idx));
-  const moveNode = (idx, dir) =>
-    setNodes((prev) => {
-      const j = idx + dir;
-      if (j < 0 || j >= prev.length) return prev;
-      const arr = [...prev];
-      const t = arr[idx];
-      arr[idx] = arr[j];
-      arr[j] = t;
-      return arr;
-    });
   const updateNode = (idx, n) => setNodes((prev) => prev.map((x, i) => (i === idx ? n : x)));
+
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setNodes((prev) => {
+      const oldIndex = prev.findIndex((n) => n.id === active.id);
+      const newIndex = prev.findIndex((n) => n.id === over.id);
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  };
+
+  const SortableNode = ({ node, idx }) => {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: node.id });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="flex items-center justify-between bg-slate-800/60 rounded-xl p-2 border border-slate-700"
+      >
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="drag-handle" {...attributes} {...listeners}>
+            <FaGripVertical />
+          </div>
+          <Badge title={node.type}>{node.type}</Badge>
+          <div className="text-sm text-slate-100">{summarizeNode(node)}</div>
+          <code className="text-xs bg-slate-900/70 border border-slate-700 rounded px-1.5 py-0.5">{nodeToPattern(node)}</code>
+        </div>
+        <div className="flex items-center gap-1">
+          <IconBtn title="Edit" Icon={FaEdit} onClick={() => setModalNode({ idx })} />
+          <IconBtn title="Delete" Icon={FaTrash} onClick={() => removeNode(idx)} />
+        </div>
+      </div>
+    );
+  };
 
   const pattern = useMemo(() => nodes.map(nodeToPattern).join(""), [nodes]);
   const flagsStr = useMemo(() => Object.entries(flags).filter(([, v]) => v).map(([k]) => k).join(""), [flags]);
@@ -55,7 +100,9 @@ export default function RegexBuilderApp() {
         <header className="mb-6 flex items-center justify-between gap-3 flex-wrap">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Regex Builder</h1>
           <div className="flex items-center gap-2 flex-wrap">
-            <button className="pill" onClick={applyEmailTemplate}>✨ Email template</button>
+            <button className="pill" onClick={applyEmailTemplate}>
+              <FaMagic /> Email template
+            </button>
             <button
               className="pill"
               onClick={() => {
@@ -63,7 +110,7 @@ export default function RegexBuilderApp() {
                 setFlags({ g: true, i: true, m: false, s: false, u: false, y: false });
               }}
             >
-              ↺ Reset
+              <FaRedo /> Reset
             </button>
             <button className="pill" onClick={() => setShowExplain(!showExplain)}>{showExplain ? "Hide" : "Show"} explain</button>
           </div>
@@ -92,21 +139,13 @@ export default function RegexBuilderApp() {
 
                 <div className="space-y-2">
                   {nodes.length === 0 && <div className="text-sm text-slate-400">No blocks yet. Add from the left panel.</div>}
-                  {nodes.map((n, idx) => (
-                    <div key={n.id} className="flex items-center justify-between bg-slate-800/60 rounded-xl p-2 border border-slate-700">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <Badge title={n.type}>{n.type}</Badge>
-                        <div className="text-sm text-slate-100">{summarizeNode(n)}</div>
-                        <code className="text-xs bg-slate-900/70 border border-slate-700 rounded px-1.5 py-0.5">{nodeToPattern(n)}</code>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <IconBtn title="Move up" onClick={() => moveNode(idx, -1)}>↑</IconBtn>
-                        <IconBtn title="Move down" onClick={() => moveNode(idx, 1)}>↓</IconBtn>
-                        <IconBtn title="Edit" onClick={() => setModalNode({ idx })}>✎</IconBtn>
-                        <IconBtn title="Delete" onClick={() => removeNode(idx)}>🗑</IconBtn>
-                      </div>
-                    </div>
-                  ))}
+                  <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                    <SortableContext items={nodes.map((n) => n.id)} strategy={verticalListSortingStrategy}>
+                      {nodes.map((n, idx) => (
+                        <SortableNode key={n.id} node={n} idx={idx} />
+                      ))}
+                    </SortableContext>
+                  </DndContext>
                 </div>
 
                 {showExplain && (

@@ -1,4 +1,5 @@
 import React from "react";
+import { FaTimes } from "react-icons/fa";
 
 export const Badge = ({ children, title }) => (
   <span title={title} className="inline-flex items-center rounded-full bg-slate-800/70 text-slate-100 px-2 py-0.5 text-xs">
@@ -25,9 +26,13 @@ export const ToggleChip = ({ label, checked, onChange }) => (
   </button>
 );
 
-export const IconBtn = ({ title, onClick, children }) => (
-  <button title={title} onClick={onClick} className="p-1.5 rounded-md bg-slate-800/70 hover:bg-slate-700 text-slate-200 border border-slate-700">
-    {children}
+export const IconBtn = ({ title, onClick, Icon }) => (
+  <button
+    title={title}
+    onClick={onClick}
+    className="p-1.5 rounded-md bg-slate-800/70 hover:bg-slate-700 text-slate-200 border border-slate-700 inline-flex items-center justify-center"
+  >
+    <Icon />
   </button>
 );
 
@@ -36,7 +41,7 @@ export const Modal = ({ title, onClose, children }) => (
     <div className="w-[min(720px,96vw)] max-h-[90vh] overflow-auto bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-2xl">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-semibold text-slate-100">{title}</h3>
-        <IconBtn title="Close" onClick={onClose}>✖</IconBtn>
+        <IconBtn title="Close" onClick={onClose} Icon={FaTimes} />
       </div>
       {children}
     </div>

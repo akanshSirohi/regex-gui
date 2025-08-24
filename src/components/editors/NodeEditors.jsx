@@ -3,6 +3,21 @@ import { Badge, ToggleChip, IconBtn, Modal } from "../ui.jsx";
 import QuantEditor from "./QuantEditor.jsx";
 import Palette from "../Palette.jsx";
 import { defaultQuant, summarizeNode } from "../../utils/regex.jsx";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  useSortable,
+  arrayMove,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { FaEdit, FaTrash, FaGripVertical } from "react-icons/fa";
 
 export const LiteralEditor = ({ node, onChange }) => (
   <div className="space-y-3">
@@ -97,16 +112,51 @@ export const GroupEditor = ({ node, onChange }) => {
 
   const addNode = (n) => onChange({ ...node, nodes: [...node.nodes, n] });
 
-  const removeIdx = (idx) => onChange({ ...node, nodes: node.nodes.filter((_, i) => i !== idx) });
+  const removeIdx = (idx) =>
+    onChange({ ...node, nodes: node.nodes.filter((_, i) => i !== idx) });
 
-  const move = (idx, dir) => {
-    const j = idx + dir;
-    if (j < 0 || j >= node.nodes.length) return;
-    const next = [...node.nodes];
-    const t = next[idx];
-    next[idx] = next[j];
-    next[j] = t;
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = node.nodes.findIndex((n) => n.id === active.id);
+    const newIndex = node.nodes.findIndex((n) => n.id === over.id);
+    const next = arrayMove(node.nodes, oldIndex, newIndex);
     onChange({ ...node, nodes: next });
+  };
+
+  const SortableChild = ({ child, idx }) => {
+    const {
+      attributes,
+      listeners,
+      setNodeRef,
+      transform,
+      transition,
+    } = useSortable({ id: child.id });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="flex items-center justify-between bg-slate-800/60 rounded-xl p-2 border border-slate-700"
+      >
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="drag-handle" {...attributes} {...listeners}>
+            <FaGripVertical />
+          </div>
+          <Badge>{child.type}</Badge>
+          <div className="text-sm text-slate-100">{summarizeNode(child)}</div>
+        </div>
+        <div className="flex items-center gap-1">
+          <IconBtn title="Edit" Icon={FaEdit} onClick={() => setEditingIdx(idx)} />
+          <IconBtn title="Delete" Icon={FaTrash} onClick={() => removeIdx(idx)} />
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -121,33 +171,43 @@ export const GroupEditor = ({ node, onChange }) => {
 
       <Palette onAdd={addNode} minimal />
 
-      <div className="space-y-2">
-        {node.nodes.length === 0 && <div className="text-sm text-slate-400">No items yet. Add building blocks above.</div>}
-        {node.nodes.map((child, idx) => (
-          <div key={child.id} className="flex items-center justify-between bg-slate-800/60 rounded-xl p-2 border border-slate-700">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge>{child.type}</Badge>
-              <div className="text-sm text-slate-100">{summarizeNode(child)}</div>
+        <div className="space-y-2">
+          {node.nodes.length === 0 && (
+            <div className="text-sm text-slate-400">
+              No items yet. Add building blocks above.
             </div>
-            <div className="flex items-center gap-1">
-              <IconBtn title="Move up" onClick={() => move(idx, -1)}>↑</IconBtn>
-              <IconBtn title="Move down" onClick={() => move(idx, 1)}>↓</IconBtn>
-              <IconBtn title="Edit" onClick={() => setEditingIdx(idx)}>✎</IconBtn>
-              <IconBtn title="Delete" onClick={() => removeIdx(idx)}>🗑</IconBtn>
-            </div>
-          </div>
-        ))}
-      </div>
+          )}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleDragEnd}
+          >
+            <SortableContext
+              items={node.nodes.map((n) => n.id)}
+              strategy={verticalListSortingStrategy}
+            >
+              {node.nodes.map((child, idx) => (
+                <SortableChild key={child.id} child={child} idx={idx} />
+              ))}
+            </SortableContext>
+          </DndContext>
+        </div>
 
       <div>
         <div className="text-sm text-slate-300 mb-1">Quantifier (applies to the WHOLE group)</div>
         <QuantEditor q={node.quant ?? defaultQuant} onChange={(q) => onChange({ ...node, quant: q })} />
       </div>
 
-      {editingIdx !== null && <InlineEditor node={node.nodes[editingIdx]} onChange={(n) => updateChild(editingIdx, n)} onClose={() => setEditingIdx(null)} />}
-    </div>
-  );
-};
+        {editingIdx !== null && (
+          <InlineEditor
+            node={node.nodes[editingIdx]}
+            onChange={(n) => updateChild(editingIdx, n)}
+            onClose={() => setEditingIdx(null)}
+          />
+        )}
+      </div>
+    );
+  };
 
 export const AlternationEditor = ({ node, onChange }) => {
   const addBranch = () => onChange({ ...node, branches: [...node.branches, []] });
@@ -163,9 +223,55 @@ export const AlternationEditor = ({ node, onChange }) => {
     const next = node.branches.map((b, idx) => (idx === i ? b.filter((_, k) => k !== j) : b));
     onChange({ ...node, branches: next });
   };
-
   const [show, setShow] = useState(false);
   const [inlineCfg, setInlineCfg] = useState(null);
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const handleDragEnd = (i) => (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = node.branches[i].findIndex((n) => n.id === active.id);
+    const newIndex = node.branches[i].findIndex((n) => n.id === over.id);
+    const branches = node.branches.map((b, idx) =>
+      idx === i ? arrayMove(b, oldIndex, newIndex) : b
+    );
+    onChange({ ...node, branches });
+  };
+
+  const SortableBn = ({ bn, j, i }) => {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: bn.id });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="flex items-center justify-between bg-slate-900/60 rounded-lg p-2 border border-slate-700"
+      >
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="drag-handle" {...attributes} {...listeners}>
+            <FaGripVertical />
+          </div>
+          <Badge>{bn.type}</Badge>
+          <div className="text-sm text-slate-100">{summarizeNode(bn)}</div>
+        </div>
+        <div className="flex items-center gap-1">
+          <IconBtn
+            title="Edit"
+            Icon={FaEdit}
+            onClick={() => {
+              const close = () => setShow(false);
+              setShow(true);
+              setInlineCfg({ target: { i, j }, node: bn, onSave: (newN) => updateInBranch(i, j, newN), onClose: close });
+            }}
+          />
+          <IconBtn title="Delete" Icon={FaTrash} onClick={() => removeInBranch(i, j)} />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -182,27 +288,20 @@ export const AlternationEditor = ({ node, onChange }) => {
             <div className="text-slate-200 font-medium mb-1">Option {i + 1}</div>
             <Palette onAdd={(n) => addToBranch(i, n)} minimal />
             {branch.length === 0 && <div className="text-sm text-slate-400">Empty option</div>}
-            {branch.map((bn, j) => (
-              <div key={bn.id} className="flex items-center justify-between bg-slate-900/60 rounded-lg p-2 border border-slate-700">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge>{bn.type}</Badge>
-                  <div className="text-sm text-slate-100">{summarizeNode(bn)}</div>
-                </div>
-                <div className="flex items-center gap-1">
-                  <IconBtn
-                    title="Edit"
-                    onClick={() => {
-                      const close = () => setShow(false);
-                      setShow(true);
-                      setInlineCfg({ target: { i, j }, node: bn, onSave: (newN) => updateInBranch(i, j, newN), onClose: close });
-                    }}
-                  >
-                    ✎
-                  </IconBtn>
-                  <IconBtn title="Delete" onClick={() => removeInBranch(i, j)}>🗑</IconBtn>
-                </div>
-              </div>
-            ))}
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd(i)}
+            >
+              <SortableContext
+                items={branch.map((bn) => bn.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                {branch.map((bn, j) => (
+                  <SortableBn key={bn.id} bn={bn} j={j} i={i} />
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
         ))}
       </div>
@@ -232,9 +331,47 @@ export const LookEditor = ({ node, onChange }) => {
   };
 
   const addNode = (n) => onChange({ ...node, nodes: [...node.nodes, n] });
-  const removeIdx = (idx) => onChange({ ...node, nodes: node.nodes.filter((_, i) => i !== idx) });
+  const removeIdx = (idx) =>
+    onChange({ ...node, nodes: node.nodes.filter((_, i) => i !== idx) });
 
   const [editing, setEditing] = useState(null);
+  const sensors = useSensors(useSensor(PointerSensor));
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    const oldIndex = node.nodes.findIndex((n) => n.id === active.id);
+    const newIndex = node.nodes.findIndex((n) => n.id === over.id);
+    const next = arrayMove(node.nodes, oldIndex, newIndex);
+    onChange({ ...node, nodes: next });
+  };
+
+  const SortableChild = ({ child, idx }) => {
+    const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id: child.id });
+    const style = {
+      transform: CSS.Transform.toString(transform),
+      transition,
+    };
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="flex items-center justify-between bg-slate-800/60 rounded-xl p-2 border border-slate-700"
+      >
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="drag-handle" {...attributes} {...listeners}>
+            <FaGripVertical />
+          </div>
+          <Badge>{child.type}</Badge>
+          <div className="text-sm text-slate-100">{summarizeNode(child)}</div>
+        </div>
+        <div className="flex items-center gap-1">
+          <IconBtn title="Edit" Icon={FaEdit} onClick={() => setEditing(idx)} />
+          <IconBtn title="Delete" Icon={FaTrash} onClick={() => removeIdx(idx)} />
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -248,20 +385,24 @@ export const LookEditor = ({ node, onChange }) => {
       <Palette onAdd={addNode} minimal />
       <div className="space-y-2">
         {node.nodes.length === 0 && <div className="text-sm text-slate-400">Add inner blocks for the assertion.</div>}
-        {node.nodes.map((child, idx) => (
-          <div key={child.id} className="flex items-center justify-between bg-slate-800/60 rounded-xl p-2 border border-slate-700">
-            <div className="flex items-center gap-2 flex-wrap">
-              <Badge>{child.type}</Badge>
-              <div className="text-sm text-slate-100">{summarizeNode(child)}</div>
-            </div>
-            <div className="flex items-center gap-1">
-              <IconBtn title="Edit" onClick={() => setEditing(idx)}>✎</IconBtn>
-              <IconBtn title="Delete" onClick={() => removeIdx(idx)}>🗑</IconBtn>
-            </div>
-          </div>
-        ))}
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext
+            items={node.nodes.map((n) => n.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            {node.nodes.map((child, idx) => (
+              <SortableChild key={child.id} child={child} idx={idx} />
+            ))}
+          </SortableContext>
+        </DndContext>
       </div>
-      {editing !== null && <InlineEditor node={node.nodes[editing]} onChange={(n) => updateChild(editing, n)} onClose={() => setEditing(null)} />}
+      {editing !== null && (
+        <InlineEditor
+          node={node.nodes[editing]}
+          onChange={(n) => updateChild(editing, n)}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 };
