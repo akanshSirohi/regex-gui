@@ -42,7 +42,6 @@ const literal = (text, quant) => {
 // Email address
 const buildEmail = () => {
   const nodes = [];
-  nodes.push(makeAnchor("start"));
 
   const local = makeGroup();
   const localChars = charClass(
@@ -67,7 +66,6 @@ const buildEmail = () => {
   );
   domain.nodes.push(tld);
   nodes.push(domain);
-  nodes.push(makeAnchor("end"));
 
   const flags = { g: true, i: true, m: false, s: false, u: true, y: false };
   const testText = "Contact me at user@example.com";
@@ -77,13 +75,11 @@ const buildEmail = () => {
 // Phone number ###-###-####
 const buildPhone = () => {
   const nodes = [];
-  nodes.push(makeAnchor("start"));
   nodes.push(digits({ kind: "exact", n: 3, greedy: true }));
   nodes.push(literal("-"));
   nodes.push(digits({ kind: "exact", n: 3, greedy: true }));
   nodes.push(literal("-"));
   nodes.push(digits({ kind: "exact", n: 4, greedy: true }));
-  nodes.push(makeAnchor("end"));
   const flags = { g: true, i: false, m: false, s: false, u: false, y: false };
   const testText = "Call 123-456-7890 today";
   return { nodes, flags, testText };
@@ -92,7 +88,6 @@ const buildPhone = () => {
 // URL http(s)://domain.tld
 const buildURL = () => {
   const nodes = [];
-  nodes.push(makeAnchor("start"));
   nodes.push(literal("http"));
   const s = literal("s");
   s.quant = { kind: "zeroOrOne", greedy: true };
@@ -109,7 +104,6 @@ const buildURL = () => {
     { kind: "atLeast", n: 2, greedy: true }
   );
   nodes.push(tld);
-  nodes.push(makeAnchor("end"));
   const flags = { g: true, i: true, m: false, s: false, u: false, y: false };
   const testText = "Visit https://example.com for more";
   return { nodes, flags, testText };
@@ -118,14 +112,12 @@ const buildURL = () => {
 // IPv4 address
 const buildIPv4 = () => {
   const nodes = [];
-  nodes.push(makeAnchor("start"));
   const seg = makeGroup();
   seg.nodes.push(digits({ kind: "range", min: 1, max: 3, greedy: true }));
   seg.nodes.push(literal("."));
   seg.quant = { kind: "exact", n: 3, greedy: true };
   nodes.push(seg);
   nodes.push(digits({ kind: "range", min: 1, max: 3, greedy: true }));
-  nodes.push(makeAnchor("end"));
   const flags = { g: true, i: false, m: false, s: false, u: false, y: false };
   const testText = "Valid IP 192.168.0.1 inside";
   return { nodes, flags, testText };
@@ -134,13 +126,11 @@ const buildIPv4 = () => {
 // Date YYYY-MM-DD
 const buildDate = () => {
   const nodes = [];
-  nodes.push(makeAnchor("start"));
   nodes.push(digits({ kind: "exact", n: 4, greedy: true }));
   nodes.push(literal("-"));
   nodes.push(digits({ kind: "exact", n: 2, greedy: true }));
   nodes.push(literal("-"));
   nodes.push(digits({ kind: "exact", n: 2, greedy: true }));
-  nodes.push(makeAnchor("end"));
   const flags = { g: true, i: false, m: false, s: false, u: false, y: false };
   const testText = "Date 2024-01-31";
   return { nodes, flags, testText };
@@ -149,11 +139,9 @@ const buildDate = () => {
 // Time HH:MM
 const buildTime = () => {
   const nodes = [];
-  nodes.push(makeAnchor("start"));
   nodes.push(digits({ kind: "exact", n: 2, greedy: true }));
   nodes.push(literal(":"));
   nodes.push(digits({ kind: "exact", n: 2, greedy: true }));
-  nodes.push(makeAnchor("end"));
   const flags = { g: true, i: false, m: false, s: false, u: false, y: false };
   const testText = "Time 09:45";
   return { nodes, flags, testText };
@@ -162,7 +150,6 @@ const buildTime = () => {
 // Credit card (simple) ####-####-####-####
 const buildCreditCard = () => {
   const nodes = [];
-  nodes.push(makeAnchor("start"));
   const block = makeGroup();
   block.nodes.push(digits({ kind: "exact", n: 4, greedy: true }));
   const sep = charClass({ custom: "- " }, { kind: "zeroOrOne", greedy: true });
@@ -170,7 +157,6 @@ const buildCreditCard = () => {
   block.quant = { kind: "exact", n: 3, greedy: true };
   nodes.push(block);
   nodes.push(digits({ kind: "exact", n: 4, greedy: true }));
-  nodes.push(makeAnchor("end"));
   const flags = { g: true, i: false, m: false, s: false, u: false, y: false };
   const testText = "Card 1234-5678-9012-3456";
   return { nodes, flags, testText };
@@ -179,14 +165,12 @@ const buildCreditCard = () => {
 // Hex color #fff or #ffffff
 const buildHexColor = () => {
   const nodes = [];
-  nodes.push(makeAnchor("start"));
   nodes.push(literal("#"));
   const triplet = makeGroup();
   const hex = charClass({ sets: { az: true, AZ: true, d09: true } }, { kind: "exact", n: 3, greedy: true });
   triplet.nodes.push(hex);
   triplet.quant = { kind: "range", min: 1, max: 2, greedy: true };
   nodes.push(triplet);
-  nodes.push(makeAnchor("end"));
   const flags = { g: true, i: true, m: false, s: false, u: false, y: false };
   const testText = "Colors #fff and #112233";
   return { nodes, flags, testText };
@@ -203,7 +187,7 @@ const buildUsername = () => {
   nodes.push(body);
   nodes.push(makeAnchor("end"));
   const flags = { g: true, i: false, m: false, s: false, u: false, y: false };
-  const testText = "User names: test_user";
+  const testText = "test_user";
   return { nodes, flags, testText };
 };
 
@@ -230,7 +214,7 @@ const buildPassword = () => {
   nodes[nodes.length - 1].quant = { kind: "atLeast", n: 8, greedy: true };
   nodes.push(makeAnchor("end"));
   const flags = { g: true, i: false, m: false, s: false, u: false, y: false };
-  const testText = "Try Abc12345 as strong";
+  const testText = "Abc12345";
   return { nodes, flags, testText };
 };
 
