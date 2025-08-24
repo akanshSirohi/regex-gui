@@ -27,6 +27,7 @@ describe("parseRegex", () => {
             type: "alternation",
             branches: [[{ type: "literal", text: "a", quant: { kind: "one" } }], [{ type: "literal", text: "b", quant: { kind: "one" } }]],
             quant: { kind: "one" },
+            grouped: false,
           },
         ],
         quant: { kind: "one" },
@@ -70,6 +71,14 @@ describe("parseRegex", () => {
 
   it("preserves complex character class ranges", () => {
     const pattern = "([13][a-km-zA-HJ-NP-Z0-9]{26,33})";
+    const { nodes } = parseRegex(pattern, "g");
+    const round = nodes.map(nodeToPattern).join("");
+    expect(round).toEqual(pattern);
+  });
+
+  it("does not add non-capturing groups around alternation", () => {
+    const pattern =
+      "^((?=.*[\\d])(?=.*[a-z])(?=.*[A-Z])|(?=.*[a-z])(?=.*[A-Z])(?=.*[^\\w\\d\\s])|(?=.*[\\d])(?=.*[A-Z])(?=.*[^\\w\\d\\s])|(?=.*[\\d])(?=.*[a-z])(?=.*[^\\w\\d\\s])).{7,30}$";
     const { nodes } = parseRegex(pattern, "g");
     const round = nodes.map(nodeToPattern).join("");
     expect(round).toEqual(pattern);

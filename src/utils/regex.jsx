@@ -80,7 +80,11 @@ export const nodeToPattern = (n) => {
     }
     case "alternation": {
       const branches = n.branches.map((b) => b.map(nodeToPattern).join("")).join("|");
-      return `(?:${branches})${quantToString(n.quant)}`;
+      const quant = quantToString(n.quant);
+      if (n.grouped || quant) {
+        return `(?:${branches})${quant}`;
+      }
+      return branches;
     }
     case "look": {
       const inner = n.nodes.map(nodeToPattern).join("");
@@ -267,6 +271,7 @@ export const parseRegex = (pattern, flags = "") => {
         };
         collect(node);
         const alt = makeAlt();
+        alt.grouped = false;
         alt.branches = branches.map((b) => (Array.isArray(b) ? b : b));
         return [alt];
       }

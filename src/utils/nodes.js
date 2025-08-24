@@ -18,7 +18,13 @@ export const makeCharClass = () => ({
   quant: { kind: "one" },
 });
 export const makeGroup = () => ({ id: uid(), type: "group", capturing: true, nodes: [], quant: { kind: "one" } });
-export const makeAlt = () => ({ id: uid(), type: "alternation", branches: [[]], quant: { kind: "one" } });
+export const makeAlt = () => ({
+  id: uid(),
+  type: "alternation",
+  branches: [[]],
+  quant: { kind: "one" },
+  grouped: true,
+});
 export const makeLook = () => ({ id: uid(), type: "look", direction: "ahead", positive: true, nodes: [], quant: { kind: "one" } });
 export const makeBackref = () => ({ id: uid(), type: "backref", ref: { index: 1 }, quant: { kind: "one" } });
 
