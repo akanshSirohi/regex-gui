@@ -15,7 +15,8 @@ Drag-and-drop regular expression builder built with React + Vite.
 - [License](#license)
 
 ## Screenshot
-![Regex GUI interface](docs/screenshot.png)
+<img width="2880" height="2444" alt="Screenshot 2025-08-24 at 16-50-44 Regex GUI" src="https://github.com/user-attachments/assets/e1beab9c-740b-4efb-b695-6c945acd0749" />
+
 
 ## Features
 - Drag-and-drop blocks for building expressions
