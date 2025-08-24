@@ -129,6 +129,21 @@ export const summarizeNode = (n) => {
   }
 };
 
+// Build a description tree for a node and its children
+export const describeNodeTree = (node) => {
+  const item = { id: node.id, label: summarizeNode(node) };
+  if (node.type === "group" || node.type === "look") {
+    item.children = node.nodes.map(describeNodeTree);
+  } else if (node.type === "alternation") {
+    item.children = node.branches.map((branch, i) => ({
+      id: `${node.id}-b${i}`,
+      label: `Option ${i + 1}`,
+      children: branch.map(describeNodeTree),
+    }));
+  }
+  return item;
+};
+
 export const defaultQuant = { kind: "one" };
 
 export const computeMatches = (pattern, flags, text) => {
