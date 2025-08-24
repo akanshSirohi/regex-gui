@@ -3,7 +3,7 @@ import { makeLiteral, makeCharClass, makePredef, makeBoundary, makeAnchor, makeG
 
 export default function Palette({ onAdd, minimal }) {
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
+    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 gap-2">
       <button className="tile" onClick={() => onAdd(makeLiteral())}>Literal<span>text</span></button>
       <button className="tile" onClick={() => onAdd(makeCharClass())}>Character Set<span>[...]</span></button>
       <button className="tile" onClick={() => onAdd(makePredef("digit"))}>Digits<span>\\d</span></button>
