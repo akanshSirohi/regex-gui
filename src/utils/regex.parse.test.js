@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseRegex } from "./regex.jsx";
+import { parseRegex, nodeToPattern } from "./regex.jsx";
 
 const strip = (nodes) =>
   nodes.map(({ id, nodes, branches, ...rest }) => ({
@@ -66,5 +66,12 @@ describe("parseRegex", () => {
       underscore: false,
       whitespace: false,
     });
+  });
+
+  it("preserves complex character class ranges", () => {
+    const pattern = "([13][a-km-zA-HJ-NP-Z0-9]{26,33})";
+    const { nodes } = parseRegex(pattern, "g");
+    const round = nodes.map(nodeToPattern).join("");
+    expect(round).toEqual(pattern);
   });
 });

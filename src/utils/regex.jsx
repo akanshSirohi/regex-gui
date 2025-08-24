@@ -40,6 +40,9 @@ export const quantToString = (q) => {
 export const predefToString = (p) => ({ digit: "\\d", nondigit: "\\D", word: "\\w", nonword: "\\W", space: "\\s", nonspace: "\\S", any: "." }[p]);
 
 export const renderCharClass = (cc) => {
+  if (cc.raw) {
+    return `[${cc.negate ? "^" : ""}${cc.raw}]`;
+  }
   const parts = [];
   if (cc.sets.az) parts.push("a-z");
   if (cc.sets.AZ) parts.push("A-Z");
@@ -198,6 +201,7 @@ export const parseRegex = (pattern, flags = "") => {
       cc.payload.negate = true;
       body = body.slice(1);
     }
+    const rawBody = body;
     const remove = (token) => {
       if (body.includes(token)) {
         body = body.replace(token, "");
@@ -211,6 +215,7 @@ export const parseRegex = (pattern, flags = "") => {
     if (remove("_")) cc.payload.sets.underscore = true;
     if (remove("\\s")) cc.payload.sets.whitespace = true;
     cc.payload.custom = body;
+    cc.payload.raw = rawBody;
     return cc;
   };
 
