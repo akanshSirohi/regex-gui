@@ -19,6 +19,7 @@ import { NodeEditor } from "./components/editors/NodeEditors.jsx";
 import { templates } from "./templates/index.js";
 import TemplateDropdown from "./components/TemplateDropdown.jsx";
 import { nodeToPattern, summarizeNode, computeMatches, highlightText } from "./utils/regex.jsx";
+import Explanation from "./components/Explanation.jsx";
 import { makeAnchor, makeLiteral } from "./utils/nodes.js";
 import { FaEdit, FaTrash, FaRedo, FaGripVertical } from "react-icons/fa";
 import ImportRegexModal from "./components/ImportRegexModal.jsx";
@@ -95,8 +96,6 @@ export default function RegexBuilderApp() {
     }
   };
 
-  const explain = () => nodes.map((n, i) => `${i + 1}. ${summarizeNode(n)}`).join("\n");
-
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100">
       <div className="max-w-7xl mx-auto px-4 py-6">
@@ -151,8 +150,8 @@ export default function RegexBuilderApp() {
                 </div>
 
                 {showExplain && (
-                  <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-sm text-slate-300 whitespace-pre-wrap">
-                    {nodes.length ? explain() : "Add blocks to see an explanation."}
+                  <div className="bg-slate-900/60 border border-slate-800 rounded-xl p-3 text-sm text-slate-300">
+                    {nodes.length ? <Explanation nodes={nodes} /> : "Add blocks to see an explanation."}
                   </div>
                 )}
               </div>
