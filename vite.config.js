@@ -6,4 +6,5 @@ import react from '@vitejs/plugin-react';
 // as-is while removing TS-only syntax during build.
 export default defineConfig({
   plugins: [react()],
+  base: '/regex-gui/'
 });
