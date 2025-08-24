@@ -158,7 +158,7 @@ export default function RegexBuilderApp() {
             <Section title="Test against a string">
               <div className="space-y-3">
                 <textarea className="input min-h-[120px]" value={testText} onChange={(e) => setTestText(e.target.value)} />
-                <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3 text-base leading-relaxed">
+                <div className="bg-slate-800/60 border border-slate-700 rounded-xl p-3 text-base leading-relaxed whitespace-pre-wrap">
                   {highlightText(testText, matches.map((m) => ({ start: m.start, end: m.end })))}
                 </div>
                 <div className="text-sm text-slate-300">
