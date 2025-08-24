@@ -1,0 +1,11 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer components {
+  .tile { @apply w-full bg-slate-800/70 hover:bg-slate-700 border border-slate-700 rounded-xl p-3 text-left transition; }
+  .tile span { @apply block text-[11px] opacity-70; }
+  .btn { @apply bg-indigo-600 hover:bg-indigo-500 text-white px-3 py-2 rounded-lg shadow; }
+  .input { @apply w-full px-3 py-2 rounded-lg bg-slate-900/70 border border-slate-700 text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500; }
+  .pill { @apply inline-flex items-center gap-2 px-2.5 py-1.5 rounded-full bg-slate-800/70 border border-slate-700 text-xs; }
+}
